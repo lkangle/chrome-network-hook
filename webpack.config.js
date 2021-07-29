@@ -8,7 +8,7 @@ const ReactRefreshTypeScript = require('react-refresh-typescript');
 
 const dist = path.resolve(__dirname, 'dist');
 const isDevelopment = process.env.NODE_ENV !== 'production';
-const inServe = process.env.NODE_ENV === 'SERVE';
+const inServe = process.env.NODE_ENV === 'serve';
 
 module.exports = {
   mode: isDevelopment ? 'development' : 'production',
@@ -38,13 +38,26 @@ module.exports = {
       {
         test: /\.[jt]sx?$/,
         exclude: /node_modules/,
-        loader: 'ts-loader',
-        options: {
-          getCustomTransformers: () => ({
-            before: inServe ? [ReactRefreshTypeScript()] : []
-          }),
-          transpileOnly: inServe
-        }
+        use: [
+          {
+            loader: 'ts-loader',
+            options: {
+              getCustomTransformers: () => ({
+                before: inServe ? [ReactRefreshTypeScript()] : []
+              }),
+              transpileOnly: inServe
+            }
+          },
+          {
+            loader: 'ui-component-loader',
+            options: {
+              lib: 'antd',
+              libDir: 'es',
+              camel2: '-',
+              style: 'style/css.js'
+            }
+          }
+        ]
       },
       {
         test: /\.(png|jpg|gif)$/,
@@ -55,6 +68,10 @@ module.exports = {
           outputPath: 'images',
           esModule: false
         }
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader']
       }
     ]
   },
@@ -96,5 +113,5 @@ module.exports = {
     builtAt: true,
     modules: false
   },
-  devtool: false
+  devtool: 'eval-source-map'
 };

@@ -1,11 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import Home from '@/pages/home';
+import Index from '@/pages/home';
 
 ReactDOM.render(
   <React.StrictMode>
-    <h2>主页</h2>
-    <Home />
+    <Index />
   </React.StrictMode>,
   document.getElementById('root')
 );
