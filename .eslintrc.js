@@ -4,7 +4,11 @@ module.exports = {
     es2021: true,
     jest: true
   },
-  extends: ['plugin:react/recommended', 'plugin:prettier/recommended'],
+  extends: [
+    'plugin:react/recommended',
+    'plugin:prettier/recommended',
+    'plugin:@typescript-eslint/recommended'
+  ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaFeatures: {
@@ -20,7 +24,6 @@ module.exports = {
     'react-hooks/exhaustive-deps': 1,
     'react/prop-types': 0,
     'react/display-name': 1,
-    'no-unused-vars': 1,
     'prettier/prettier': [
       'error',
       {

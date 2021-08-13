@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Radio, Button, Row, Col, Input, Divider, Space } from 'antd';
 import SettingFilled from '@ant-design/icons/es/icons/SettingFilled';
 import styled from 'styled-components';
 import NetTable from '@/components/NetTable';
+import { debounce } from 'lodash-es';
+import useDataStore from '@/hooks/useDataStore';
+import { TYPE_MAP } from '@/utils/types';
 
 const DivHome = styled.div`
   min-width: 470px;
@@ -19,22 +22,31 @@ const Box = styled.div`
   height: calc(100vh - 55px);
 `;
 
-const typeOptions = ['All', 'XHR', 'JS', 'CSS', 'Img', 'Other'].map(v => ({
+const typeOptions = ['All', ...Object.values(TYPE_MAP)].map(v => ({
   label: v,
   value: v
 }));
 
-const data: any = new Array(10).fill(1).map((v, i) => {
-  return {
-    key: 'idx-' + i,
-    type: 'js',
-    url: 'http://111.com/' + i + '_index.js',
-    timestamp: 11111
-  };
-});
-
-const Home = () => {
+const Home: React.FC = () => {
+  const [search, setSearch] = useState('');
   const [type, setType] = useState('All');
+  const [originData, markItem, removeItem] = useDataStore();
+
+  const data = useMemo(() => {
+    // 根据查询条件进行数据过滤
+    return originData.filter(item => {
+      let reserve = true;
+      if (search) {
+        reserve = item.url.includes(search) && reserve;
+      }
+      if (type && type !== 'All') {
+        reserve = item.type === type && reserve;
+      }
+      return reserve;
+    });
+  }, [search, type, originData]);
+
+  const onSearchChange = debounce(e => setSearch(e.target.value), 500);
 
   return (
     <DivHome>
@@ -42,6 +54,7 @@ const Home = () => {
         <Col style={{ paddingLeft: 10 }}>
           <Space>
             <Input
+              onInput={onSearchChange}
               style={{ maxWidth: 160 }}
               size="small"
               type={'search'}
@@ -65,7 +78,12 @@ const Home = () => {
 
       <Box>
         <Col flex={2}>
-          <NetTable listHeight={'calc(100vh - 130px)'} data={data} />
+          <NetTable
+            listHeight={'calc(100vh - 130px)'}
+            data={data}
+            markItem={markItem}
+            removeItem={removeItem}
+          />
         </Col>
         <Col style={{ padding: 6 }}>
           <Space size={6} align={'center'}>
