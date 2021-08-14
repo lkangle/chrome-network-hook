@@ -3,7 +3,9 @@ import {
   FileData,
   FileStatus,
   MarkItemFunc,
-  RemoveItemFunc
+  FILE_DATA_MSG,
+  RemoveItemFunc,
+  DOM_BEFORE_UNLOAD_MSG
 } from '@/utils/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -12,21 +14,40 @@ async function readFileData(): Promise<FileData[]> {
   return getStorage<FileData[]>(domain);
 }
 
-async function writeFileData(data) {
+async function writeFileData(data: FileData[]) {
   const domain = await getWebOrigin();
-  setStorage(domain, data);
+  setStorage(
+    domain,
+    data.map(v => ({
+      url: v.url,
+      status: v.status,
+      redirectUrl: v.redirectUrl
+    }))
+  );
 }
 
 function useDataStore(): [FileData[], MarkItemFunc, RemoveItemFunc] {
-  const [data, setFileData] = useState<FileData[]>([]);
-  const [replace, setReplace] = useState<FileData[]>([]);
+  const [fileData, setFileData] = useState<FileData[]>(() => []);
+  const [replaceData, setReplace] = useState<FileData[]>([]);
 
   const receiveMessage = useCallback(message => {
-    const msg = message.data;
-    if (msg) {
-      setFileData(prev => {
-        return prev.concat(msg);
-      });
+    const msg = message.data || message;
+    if (!msg) return;
+
+    switch (msg.type) {
+      case FILE_DATA_MSG: {
+        if (msg.payload) {
+          setFileData(prev => {
+            return prev.concat(msg.payload);
+          });
+        }
+        break;
+      }
+      // 网页卸载之前清空文件列表
+      case DOM_BEFORE_UNLOAD_MSG: {
+        setFileData([]);
+        break;
+      }
     }
   }, []);
 
@@ -34,8 +55,10 @@ function useDataStore(): [FileData[], MarkItemFunc, RemoveItemFunc] {
     readFileData().then(data => {
       if (data) setReplace(data);
     });
+    chrome.runtime.onMessage.addListener(receiveMessage);
     window.addEventListener('message', receiveMessage);
     return () => {
+      chrome.runtime.onMessage.removeListener(receiveMessage);
       window.removeEventListener('message', receiveMessage);
     };
   }, []);
@@ -43,28 +66,19 @@ function useDataStore(): [FileData[], MarkItemFunc, RemoveItemFunc] {
   /**
    * 添加一条替换记录，如果存在则会刷新
    *
-   * @param url         要标记的url
-   * @param redirectUrl 重定向的地址
-   * @param status      标记的状态（没有这是Block）
+   * @param item 要标记的项目
    */
-  function markReplaceItem(
-    url: string,
-    redirectUrl: string | null,
-    status?: FileStatus
-  ) {
+  function markReplaceItem(item: FileData) {
     setReplace(prev => {
-      if (!status) {
-        status = redirectUrl ? FileStatus.REPLACE : FileStatus.BLOCK;
-      }
       // url是唯一的，可以用来检索
-      const idx = prev.findIndex(v => v.url === url);
+      const idx = prev.findIndex(v => v.url === item.url);
       if (idx !== -1) {
-        const item = prev[idx];
-        prev.splice(idx, 1, {
-          ...item,
-          status,
-          redirectUrl: redirectUrl || item.redirectUrl
-        });
+        const replace = prev[idx];
+        // 若本次item没有redirectUrl可以尝试用上一次的
+        const redirectUrl = item.redirectUrl || replace.redirectUrl;
+        prev.splice(idx, 1, { ...item, redirectUrl });
+      } else {
+        prev.push(item);
       }
 
       const nd = [...prev];
@@ -103,13 +117,15 @@ function useDataStore(): [FileData[], MarkItemFunc, RemoveItemFunc] {
 
   // 合成后的数据，结合了替换的文件
   const combineData = useMemo<FileData[]>(() => {
-    return data.map(v => {
-      const rp = replace.find(rv => rv.url === v.url);
-      return Object.assign(rp || v, {
+    return fileData.map(v => {
+      const rp = replaceData.find(rv => rv.url === v.url);
+      // 根据替换的文件设置状态
+      return Object.assign({}, v, {
+        ...rp,
         status: rp?.status || FileStatus.ORIGIN
       });
     });
-  }, [data, replace]);
+  }, [fileData, replaceData]);
 
   return [combineData, markReplaceItem, removeReplaceItem];
 }

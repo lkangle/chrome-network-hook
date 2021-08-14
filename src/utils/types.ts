@@ -1,11 +1,10 @@
 export type FileType = 'XHR' | 'JS' | 'CSS' | 'Img' | 'Other';
 
-export type MarkItemFunc = (
-  url: string,
-  redirectUrl: string | null,
-  status?: FileStatus,
-  item?: FileData
-) => void;
+export const FILE_DATA_MSG = 'FILE_HOOK::file-data';
+export const DOM_BEFORE_UNLOAD_MSG = 'FILE_HOOK::DOM_BEFORE_UNLOAD_MSG';
+export const SERVICE_URL = 'FILE_HOOK::BACKEND_SERVICE';
+
+export type MarkItemFunc = (item: FileData) => void;
 export type RemoveItemFunc = (url: string, item?: FileData) => void;
 
 export const TYPE_MAP = {
@@ -13,7 +12,6 @@ export const TYPE_MAP = {
   script: 'JS',
   stylesheet: 'CSS',
   image: 'Img',
-  font: 'Font',
   other: 'Other'
 };
 
@@ -35,4 +33,9 @@ export interface FileData {
   // 替换用的url地址
   redirectUrl?: string;
   readonly requestBody?: any;
+}
+
+export interface ModelControl {
+  show: (item: FileData) => void;
+  hide: () => void;
 }

@@ -237,3 +237,4 @@ dist
 .idea
 *.iml
 .DS_Store
+__mock__

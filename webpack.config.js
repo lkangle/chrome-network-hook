@@ -102,7 +102,15 @@ module.exports = {
     port: 10090,
     hot: true,
     open: false,
-    historyApiFallback: true
+    historyApiFallback: true,
+    proxy: {
+      '/api': {
+        target: 'http://118.31.60.82:17002',
+        pathRewrite: {
+          '^/api': ''
+        }
+      }
+    }
   },
   performance: {
     maxEntrypointSize: 10240000,

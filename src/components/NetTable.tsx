@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
-import { Button, Space, Table, Tag, Tooltip } from 'antd';
+import { Button, Space, Table, Tag } from 'antd';
 import styled from 'styled-components';
 import {
   FileData,
   FileStatus,
   MarkItemFunc,
+  ModelControl,
   RemoveItemFunc
 } from '@/utils/types';
+import ReplaceModel from '@/components/ReplaceModel';
 
 const TableWrapper = styled.div`
   width: 100%;
@@ -23,17 +25,8 @@ const baseColumns = [
   {
     key: 'filename',
     title: '名字',
-    ellipsis: {
-      showTitle: false
-    },
-    dataIndex: 'filename',
-    render(filename, item) {
-      return (
-        <Tooltip placement={'bottom'} title={item.url}>
-          {item.filename}
-        </Tooltip>
-      );
-    }
+    ellipsis: true,
+    dataIndex: 'filename'
   },
   {
     key: 'type',
@@ -41,23 +34,10 @@ const baseColumns = [
     dataIndex: 'type'
   },
   {
-    key: 'timestamp',
-    title: '时间',
-    width: 150,
-    dataIndex: 'timestamp',
-    render(v, item) {
-      const timestamp = item.timestamp + '';
-      const dt = new Date(+timestamp);
-      const time = dt.toLocaleTimeString();
-      const ms = timestamp.split('.')[0].slice(-3);
-      return <span>{time + '.' + ms}</span>;
-    }
-  },
-  {
     key: 'status',
     title: '状态',
     dataIndex: 'status',
-    width: 90,
+    width: 75,
     render(status) {
       if (status === FileStatus.ORIGIN) {
         return <Tag>默认</Tag>;
@@ -70,8 +50,11 @@ const baseColumns = [
   }
 ];
 
+const NoControl = { show() {}, hide() {} };
+
 const NetTable: React.FC<Props> = props => {
   const { listHeight, data = [], markItem, removeItem } = props;
+  const model = useMemo<ModelControl>(() => NoControl, []);
 
   const columns = useMemo(
     () => [
@@ -83,7 +66,13 @@ const NetTable: React.FC<Props> = props => {
         render(item: FileData) {
           return (
             <Space size={6}>
-              <Button size={'small'}>替换</Button>
+              <Button
+                disabled={item.status === FileStatus.BLOCK}
+                size={'small'}
+                onClick={() => model.show(item)}
+              >
+                替换
+              </Button>
               {item.status === FileStatus.BLOCK && (
                 <Button
                   type={'primary'}
@@ -101,7 +90,10 @@ const NetTable: React.FC<Props> = props => {
                   danger
                   size={'small'}
                   onClick={() => {
-                    markItem(item.url, null, FileStatus.BLOCK);
+                    markItem({
+                      ...item,
+                      status: FileStatus.BLOCK
+                    });
                   }}
                 >
                   阻止
@@ -124,6 +116,11 @@ const NetTable: React.FC<Props> = props => {
         size={'small'}
         pagination={false}
         scroll={{ y: listHeight }}
+      />
+      <ReplaceModel
+        markItem={markItem}
+        removeItem={removeItem}
+        control={model}
       />
     </TableWrapper>
   );

@@ -24,6 +24,7 @@ module.exports = {
     'react-hooks/exhaustive-deps': 1,
     'react/prop-types': 0,
     'react/display-name': 1,
+    '@typescript-eslint/no-empty-function': 0,
     'prettier/prettier': [
       'error',
       {

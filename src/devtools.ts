@@ -1,5 +1,5 @@
 import { getStorage } from '@/utils';
-import { FileData, FileStatus, TYPE_MAP } from '@/utils/types';
+import { FileData, FileStatus, FILE_DATA_MSG, TYPE_MAP } from '@/utils/types';
 import WebRequestBodyDetails = chrome.webRequest.WebRequestBodyDetails;
 
 const typeMap = {
@@ -74,7 +74,10 @@ chrome.devtools.panels.create('NetHooks', null, './index.html', panel => {
   chrome.webRequest.onBeforeRequest.addListener(
     details => {
       // 将当前请求发送给devtool
-      panelWindow?.postMessage(createFileData(details), '*');
+      panelWindow?.postMessage(
+        { type: FILE_DATA_MSG, payload: createFileData(details) },
+        '*'
+      );
 
       // 判断是否进行文件替换
       const replaces = getStorage<FileData[]>(details.initiator);
