@@ -5,6 +5,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const ReactRefreshTypeScript = require('react-refresh-typescript');
+const { version } = require('./package.json');
 
 const dist = path.resolve(__dirname, 'dist');
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -86,7 +87,12 @@ module.exports = {
     new ProgressPlugin(),
     new CopyWebpackPlugin({
       patterns: [
-        'manifest.json',
+        {
+          from: 'manifest.json',
+          transform: v => {
+            return JSON.stringify({ ...JSON.parse(v), version });
+          }
+        },
         { from: './src/assets/icon.png', to: 'assets/icon.png' },
         { from: './src/assets/devtools.html', to: 'assets/devtools.html' }
       ]

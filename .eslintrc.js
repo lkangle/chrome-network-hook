@@ -25,6 +25,7 @@ module.exports = {
     'react/prop-types': 0,
     'react/display-name': 1,
     '@typescript-eslint/no-empty-function': 0,
+    '@typescript-eslint/no-var-requires': 0,
     'prettier/prettier': [
       'error',
       {

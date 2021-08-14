@@ -22,7 +22,7 @@ function clearUrl(url: string): string {
   return url;
 }
 
-chrome.devtools.panels.create('NetHooks', null, './index.html', panel => {
+chrome.devtools.panels.create('NetHook', null, './index.html', panel => {
   let panelWindow: Window = null;
   panel.onShown.addListener(window => {
     if (window) {
