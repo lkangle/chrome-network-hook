@@ -96,10 +96,9 @@ const UrlInput: React.FC<{ onChange: (v) => void }> = props => {
 
   const inputOnChange = e => {
     let val = e.target.value;
-    if (val.startsWith('/')) val = val.slice(1);
     // 自动补充文件协议
     if (!/^(http:|https:|file:)\/\//.test(val)) {
-      val = 'file://' + val;
+      val = 'file://' + (val.startsWith('/') ? val : '/' + val);
     }
     dbOnChange(val);
   };

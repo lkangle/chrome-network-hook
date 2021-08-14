@@ -1,5 +1,5 @@
 {
-  "name": "NetHooks",
+  "name": "NetHook",
   "version": "1.0.0",
   "manifest_version": 2,
   "icons": {
@@ -9,7 +9,7 @@
   },
   "browser_action": {
     "default_icon": "/assets/icon.png",
-    "default_title": "NetHooks"
+    "default_title": "NetHook"
   },
   "permissions": [
     "tabs",
