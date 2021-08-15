@@ -16,9 +16,10 @@ export const TYPE_MAP = {
 };
 
 export enum FileStatus {
-  ORIGIN,
-  REPLACE,
-  BLOCK
+  ORIGIN = 'og',
+  REPLACE = 'rp',
+  REPLACE_STOP = 'rps',
+  BLOCK = 'bk'
 }
 
 export interface FileData {

@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Radio, Button, Row, Col, Input, Divider, Space } from 'antd';
+import { Button, Col, Divider, Input, Radio, Row, Space } from 'antd';
 import SettingFilled from '@ant-design/icons/es/icons/SettingFilled';
 import styled from 'styled-components';
 import NetTable from '@/components/NetTable';
 import { debounce } from 'lodash-es';
 import useDataStore from '@/hooks/useDataStore';
-import { TYPE_MAP } from '@/utils/types';
+import { FileStatus, TYPE_MAP } from '@/utils/types';
 
 const DivHome = styled.div`
   min-width: 470px;
@@ -32,9 +32,12 @@ const Home: React.FC = () => {
   const [type, setType] = useState('All');
   const [originData, markItem, removeItem] = useDataStore();
 
-  const data = useMemo(() => {
+  const [data, replaceCount, blockCount] = useMemo(() => {
     // 根据查询条件进行数据过滤
-    return originData.filter(item => {
+    // 过滤的同时做统计，减少计算量
+    let replaceCount = 0;
+    let blockCount = 0;
+    const targetData = originData.filter(item => {
       let reserve = true;
       if (search) {
         reserve = item.url.includes(search) && reserve;
@@ -42,8 +45,16 @@ const Home: React.FC = () => {
       if (type && type !== 'All') {
         reserve = item.type === type && reserve;
       }
+      if (reserve) {
+        if (item.status === FileStatus.REPLACE) {
+          replaceCount++;
+        } else if (item.status === FileStatus.BLOCK) {
+          blockCount++;
+        }
+      }
       return reserve;
     });
+    return [targetData, replaceCount, blockCount];
   }, [search, type, originData]);
 
   const onSearchChange = debounce(e => setSearch(e.target.value), 500);
@@ -88,8 +99,8 @@ const Home: React.FC = () => {
         <Col style={{ padding: 6 }}>
           <Space size={6} align={'center'}>
             <span>请求数: {data.length}</span>
-            <span>替换数: 0</span>
-            <span>阻止请求数: 0</span>
+            <span>替换数: {replaceCount}</span>
+            <span>阻止请求数: {blockCount}</span>
           </Space>
         </Col>
       </Box>

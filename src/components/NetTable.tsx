@@ -45,16 +45,19 @@ const baseColumns = [
       if (status === FileStatus.REPLACE) {
         return <Tag color={'green'}>替换</Tag>;
       }
+      if (status === FileStatus.REPLACE_STOP) {
+        return <Tag color={'warning'}>停用</Tag>;
+      }
       return <Tag color={'red'}>禁止</Tag>;
     }
   }
 ];
 
-const NoControl = { show() {}, hide() {} };
+const EmptyControl = { show() {}, hide() {} };
 
 const NetTable: React.FC<Props> = props => {
   const { listHeight, data = [], markItem, removeItem } = props;
-  const model = useMemo<ModelControl>(() => NoControl, []);
+  const model = useMemo<ModelControl>(() => EmptyControl, []);
 
   const columns = useMemo(
     () => [

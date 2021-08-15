@@ -1,5 +1,5 @@
 import { getStorage } from '@/utils';
-import { FileData, FileStatus, FILE_DATA_MSG, TYPE_MAP } from '@/utils/types';
+import { FILE_DATA_MSG, FileData, FileStatus, TYPE_MAP } from '@/utils/types';
 import WebRequestBodyDetails = chrome.webRequest.WebRequestBodyDetails;
 
 const typeMap = {
@@ -47,12 +47,13 @@ chrome.devtools.panels.create('NetHook', null, './index.html', panel => {
     } as FileData;
   }
 
+  // 同步读取本地文件
   function syncReadLocalFile(fileurl): string {
     const arr = fileurl.split('.');
     const type = arr[arr.length - 1];
     const xhr = new XMLHttpRequest();
     xhr.open('get', fileurl, false);
-    xhr.send(null);
+    xhr.send();
     let content: any = xhr.responseText || xhr.responseXML;
     if (!content) {
       return '';
@@ -73,32 +74,37 @@ chrome.devtools.panels.create('NetHook', null, './index.html', panel => {
   const tabId = chrome.devtools.inspectedWindow.tabId;
   chrome.webRequest.onBeforeRequest.addListener(
     details => {
-      // 将当前请求发送给devtool
-      panelWindow?.postMessage(
-        { type: FILE_DATA_MSG, payload: createFileData(details) },
-        '*'
-      );
+      try {
+        // 将当前请求发送给devtool
+        panelWindow?.postMessage(
+          { type: FILE_DATA_MSG, payload: createFileData(details) },
+          '*'
+        );
 
-      // 判断是否进行文件替换
-      const replaces = getStorage<FileData[]>(details.initiator);
-      if (replaces?.length) {
-        const replace = replaces.find(v => v.url === details.url);
-        if (replace) {
-          // 优先阻止请求
-          if (replace.status === FileStatus.BLOCK) {
-            return { cancel: true };
-          }
+        // 判断是否进行文件替换
+        const replaces = getStorage<FileData[]>(details.initiator);
+        if (replaces?.length) {
+          const replace = replaces.find(v => v.url === details.url);
+          if (replace) {
+            // 优先阻止请求
+            if (replace.status === FileStatus.BLOCK) {
+              return { cancel: true };
+            }
 
-          let redirectUrl = replace.redirectUrl;
-          // 可以直接读取本地文件，路径要以file://开头才会识别本地文件
-          if (redirectUrl.startsWith('file://')) {
-            redirectUrl = syncReadLocalFile(replace.redirectUrl);
-          }
-          if (redirectUrl) {
-            return { redirectUrl: redirectUrl };
+            // 停用的replace无效
+            if (replace.status === FileStatus.REPLACE) {
+              let redirectUrl = replace.redirectUrl;
+              if (redirectUrl.startsWith('file://')) {
+                redirectUrl = syncReadLocalFile(replace.redirectUrl);
+              }
+
+              if (redirectUrl) {
+                return { redirectUrl: redirectUrl };
+              }
+            }
           }
         }
-      }
+      } catch (e) {}
     },
     { tabId, urls: ['<all_urls>'] },
     ['requestBody', 'blocking']

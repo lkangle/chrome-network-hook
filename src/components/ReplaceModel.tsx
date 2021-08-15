@@ -54,6 +54,31 @@ interface Props {
   control: ModelControl;
 }
 
+const SwitchBtn: React.FC<{ open: boolean; onChange: (v: boolean) => void }> =
+  props => {
+    const { open, onChange } = props;
+    const close = onChange.bind(this, false);
+    const toOpen = onChange.bind(this, true);
+
+    if (open) {
+      return (
+        <Button onClick={close} size={'small'} danger type={'link'}>
+          停用
+        </Button>
+      );
+    }
+    return (
+      <Button
+        style={{ color: 'green' }}
+        onClick={toOpen}
+        size={'small'}
+        type={'link'}
+      >
+        启用
+      </Button>
+    );
+  };
+
 const DraggerUpload: React.FC<{ onResponse: (v) => void }> = props => {
   const { onResponse } = props;
   const actionUrl = useMemo<string>(() => {
@@ -158,6 +183,16 @@ const ReplaceModel: React.FC<Props> = props => {
     setVisible(false);
   };
 
+  // 停用替换映射
+  const onChangeReplaceStatus = open => {
+    const status = open ? FileStatus.REPLACE : FileStatus.REPLACE_STOP;
+    setStatus(status);
+    markItem({
+      ...item,
+      status
+    });
+  };
+
   useEffect(() => {
     Object.assign(control, {
       show: (item: FileData) => {
@@ -175,7 +210,7 @@ const ReplaceModel: React.FC<Props> = props => {
     return (
       <div>
         <Button onClick={onCancel}>取消</Button>
-        {status === FileStatus.REPLACE && (
+        {[FileStatus.REPLACE, FileStatus.REPLACE_STOP].includes(status) && (
           <Button danger type={'dashed'} onClick={onResume}>
             恢复
           </Button>
@@ -203,7 +238,7 @@ const ReplaceModel: React.FC<Props> = props => {
               {item.filename}
             </div>
           </InfoBox>
-          {status === FileStatus.REPLACE && (
+          {[FileStatus.REPLACE, FileStatus.REPLACE_STOP].includes(status) && (
             <InfoBox>
               <div className={'title'}>
                 <span>映射文件</span>
@@ -214,6 +249,10 @@ const ReplaceModel: React.FC<Props> = props => {
                 >
                   替换
                 </Button>
+                <SwitchBtn
+                  open={status === FileStatus.REPLACE}
+                  onChange={onChangeReplaceStatus}
+                />
               </div>
               <div className={'one-line'} title={item.url}>
                 {item.redirectUrl}
