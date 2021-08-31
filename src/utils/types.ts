@@ -4,8 +4,8 @@ export const FILE_DATA_MSG = 'FILE_HOOK::file-data';
 export const DOM_BEFORE_UNLOAD_MSG = 'FILE_HOOK::DOM_BEFORE_UNLOAD_MSG';
 export const SERVICE_URL = 'FILE_HOOK::BACKEND_SERVICE';
 
-export type MarkItemFunc = (item: FileData) => void;
-export type RemoveItemFunc = (url: string, item?: FileData) => void;
+export type MarkItemFunc = (initiator: string, item: FileData) => void;
+export type RemoveItemFunc = (initiator: string, url: string) => void;
 
 export const TYPE_MAP = {
   xmlhttprequest: 'XHR',

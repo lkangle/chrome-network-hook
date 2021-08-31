@@ -1,4 +1,4 @@
-import { getStorage, getWebOrigin, setStorage } from '@/utils';
+import { getStorage, setStorage } from '@/utils';
 import {
   FileData,
   FileStatus,
@@ -9,15 +9,24 @@ import {
 } from '@/utils/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-async function readFileData(): Promise<FileData[]> {
-  const domain = await getWebOrigin();
-  return getStorage<FileData[]>(domain);
+interface ReplaceGroup {
+  [key: string]: FileData[];
 }
 
-async function writeFileData(data: FileData[]) {
-  const domain = await getWebOrigin();
+const groupCache: ReplaceGroup = {};
+
+function readReplacesByInitiator(initiator: string): FileData[] {
+  let replaces = groupCache[initiator];
+  if (!replaces) {
+    replaces = groupCache[initiator] = getStorage<FileData[]>(initiator) || [];
+  }
+  return replaces;
+}
+
+function writeReplaceFileData(initiator: string, data: FileData[]) {
+  groupCache[initiator] = data;
   setStorage(
-    domain,
+    initiator,
     data.map(v => ({
       url: v.url,
       status: v.status,
@@ -26,9 +35,21 @@ async function writeFileData(data: FileData[]) {
   );
 }
 
+/**
+ * 从缓存中获取当前文件的替换文件，如果缓存中没有就从存储中读取，并更新缓存
+ * @param file
+ */
+function findByCacheOrUpdate(file: FileData): FileData {
+  const cache = readReplacesByInitiator(file.initiator);
+  return cache?.find(v => v.url === file.url);
+}
+
 function useDataStore(): [FileData[], MarkItemFunc, RemoveItemFunc] {
   const [fileData, setFileData] = useState<FileData[]>(() => []);
-  const [replaceData, setReplace] = useState<FileData[]>([]);
+  const [count, setCount] = useState(0);
+
+  // 用于触发组件重新渲染
+  const updateCount = () => setCount(prev => prev + 1);
 
   const receiveMessage = useCallback(message => {
     const msg = message.data || message;
@@ -52,39 +73,36 @@ function useDataStore(): [FileData[], MarkItemFunc, RemoveItemFunc] {
   }, []);
 
   useEffect(() => {
-    readFileData().then(data => {
-      if (data) setReplace(data);
-    });
     chrome.runtime.onMessage.addListener(receiveMessage);
     window.addEventListener('message', receiveMessage);
     return () => {
       chrome.runtime.onMessage.removeListener(receiveMessage);
       window.removeEventListener('message', receiveMessage);
     };
-  }, []);
+  }, [receiveMessage]);
 
   /**
    * 添加一条替换记录，如果存在则会刷新
    *
+   * @param initiator 请求发起网站地址
    * @param item 要标记的项目
    */
-  function markReplaceItem(item: FileData) {
-    setReplace(prev => {
-      // url是唯一的，可以用来检索
-      const idx = prev.findIndex(v => v.url === item.url);
-      if (idx !== -1) {
-        const replace = prev[idx];
-        // 若本次item没有redirectUrl可以尝试用上一次的
-        const redirectUrl = item.redirectUrl || replace.redirectUrl;
-        prev.splice(idx, 1, { ...item, redirectUrl });
-      } else {
-        prev.push(item);
-      }
+  function markReplaceItem(initiator: string, item: FileData) {
+    const replaces = readReplacesByInitiator(initiator);
 
-      const nd = [...prev];
-      writeFileData(nd);
-      return nd;
-    });
+    // url是唯一的，可以用来检索
+    const idx = replaces.findIndex(v => v.url === item.url);
+    if (idx !== -1) {
+      const replace = replaces[idx];
+      // 若本次item没有redirectUrl可以尝试用上一次的
+      const redirectUrl = item.redirectUrl || replace.redirectUrl;
+      replaces.splice(idx, 1, { ...item, redirectUrl });
+    } else {
+      replaces.push(item);
+    }
+
+    writeReplaceFileData(initiator, replaces);
+    updateCount();
   }
 
   /**
@@ -92,40 +110,40 @@ function useDataStore(): [FileData[], MarkItemFunc, RemoveItemFunc] {
    *
    * 删除路径为 block -> replace -> empty
    * 如果存在redirect但是状态是block，则第一次删除先降级到replace
+   * @param initiator 请求发起网站地址
    * @param url  要删除记录的url
    */
-  function removeReplaceItem(url: string) {
-    setReplace(prev => {
-      const idx = prev.findIndex(v => v.url === url);
-      if (idx !== -1) {
-        const item = prev[idx];
-        if (item.redirectUrl && item.status === FileStatus.BLOCK) {
-          prev.splice(idx, 1, {
-            ...item,
-            status: FileStatus.REPLACE
-          });
-        } else {
-          prev.splice(idx, 1);
-        }
+  function removeReplaceItem(initiator: string, url: string) {
+    const replaces = readReplacesByInitiator(initiator);
+    const idx = replaces.findIndex(v => v.url === url);
+    if (idx !== -1) {
+      const item = replaces[idx];
+      if (item.redirectUrl && item.status === FileStatus.BLOCK) {
+        replaces.splice(idx, 1, {
+          ...item,
+          status: FileStatus.REPLACE
+        });
+      } else {
+        replaces.splice(idx, 1);
       }
 
-      const nd = [...prev];
-      writeFileData(nd);
-      return nd;
-    });
+      writeReplaceFileData(initiator, replaces);
+    }
+    updateCount();
   }
 
-  // 合成后的数据，结合了替换的文件
+  // 在生成合成数据的同时会更新替换数据的缓存
   const combineData = useMemo<FileData[]>(() => {
     return fileData.map(v => {
-      const rp = replaceData.find(rv => rv.url === v.url);
+      const rp = findByCacheOrUpdate(v);
       // 根据替换的文件设置状态
       return Object.assign({}, v, {
         ...rp,
-        status: rp?.status || FileStatus.ORIGIN
+        status: rp?.status || FileStatus.ORIGIN,
+        count
       });
     });
-  }, [fileData, replaceData]);
+  }, [fileData, count]);
 
   return [combineData, markReplaceItem, removeReplaceItem];
 }

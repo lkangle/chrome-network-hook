@@ -82,7 +82,7 @@ const NetTable: React.FC<Props> = props => {
                   ghost
                   size={'small'}
                   onClick={() => {
-                    removeItem(item.url, item);
+                    removeItem(item.initiator, item.url);
                   }}
                 >
                   允许
@@ -93,7 +93,7 @@ const NetTable: React.FC<Props> = props => {
                   danger
                   size={'small'}
                   onClick={() => {
-                    markItem({
+                    markItem(item.initiator, {
                       ...item,
                       status: FileStatus.BLOCK
                     });

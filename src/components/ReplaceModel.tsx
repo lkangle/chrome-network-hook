@@ -168,13 +168,13 @@ const ReplaceModel: React.FC<Props> = props => {
 
   const onCancel = () => setVisible(false);
   const onResume = () => {
-    removeItem(item.url, item);
+    removeItem(item.initiator, item.url);
     onCancel();
   };
   const onSaveResult = () => {
     // TODO 最好能做一下url的校验咯
     if (redirectUrl) {
-      markItem({
+      markItem(item.initiator, {
         ...item,
         status: FileStatus.REPLACE,
         redirectUrl
@@ -187,7 +187,7 @@ const ReplaceModel: React.FC<Props> = props => {
   const onChangeReplaceStatus = open => {
     const status = open ? FileStatus.REPLACE : FileStatus.REPLACE_STOP;
     setStatus(status);
-    markItem({
+    markItem(item.initiator, {
       ...item,
       status
     });
